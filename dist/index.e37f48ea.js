@@ -142,7 +142,7 @@
       this[globalName] = mainExports;
     }
   }
-})({"MWpgg":[function(require,module,exports) {
+})({"hycaY":[function(require,module,exports) {
 var global = arguments[3];
 var HMR_HOST = null;
 var HMR_PORT = null;
@@ -601,13 +601,13 @@ const controlRecipes = async function() {
         // Rendering recipe
         (0, _recipeViewDefault.default).render(_model.state.recipe);
     } catch (err) {
-        console.error(err);
+        (0, _recipeViewDefault.default).renderError();
     }
 };
-[
-    "hashchange",
-    "load"
-].forEach((ev)=>window.addEventListener(ev, controlRecipes));
+// Publisher-subscriber pattern. Maybe switch to normal init() function later
+(function() {
+    (0, _recipeViewDefault.default).addHandlerRender(controlRecipes);
+})();
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","core-js/modules/web.immediate.js":"49tUX","./model":"Y4A21","./views/recipeView":"l60JC","regenerator-runtime/runtime":"dXNgZ"}],"gkKU3":[function(require,module,exports) {
 exports.interopDefault = function(a) {
@@ -1879,6 +1879,8 @@ parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 var _config = require("./config");
 var _helpers = require("./helpers");
+var _recipeView = require("./views/recipeView");
+var _recipeViewDefault = parcelHelpers.interopDefault(_recipeView);
 const state = {
     recipe: {}
 };
@@ -1894,11 +1896,11 @@ const loadRecipe = async function(id) {
         }, {});
         console.log(state.recipe);
     } catch (err) {
-        console.error(err);
+        throw err;
     }
 };
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config":"k5Hzs","./helpers":"hGI1E"}],"k5Hzs":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config":"k5Hzs","./helpers":"hGI1E","./views/recipeView":"l60JC"}],"k5Hzs":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "API_URL", ()=>API_URL);
@@ -1940,6 +1942,8 @@ var _fractional = require("fractional");
 class RecipeView {
     #parentEl = document.querySelector(".recipe");
     #data;
+    #errorMessage = "No recipes found for your query. Please try again!";
+    #successMessage = "";
     render(data) {
         this.#data = data;
         const markup = this.#generateMarkup();
@@ -1949,6 +1953,12 @@ class RecipeView {
     clear() {
         this.#parentEl.innerHTML = "";
     }
+    addHandlerRender(handler) {
+        [
+            "hashchange",
+            "load"
+        ].forEach((ev)=>window.addEventListener(ev, handler));
+    }
     renderLoadIcon() {
         const markup = `
       <div class="spinner">
@@ -1957,7 +1967,35 @@ class RecipeView {
         </svg>
       </div>
     `;
-        this.#parentEl.innerHTML = "";
+        this.clear();
+        this.#parentEl.insertAdjacentHTML("afterbegin", markup);
+    }
+    renderError(message = this.#errorMessage) {
+        const markup = `
+      <div class="error">
+        <div>
+          <svg>
+            <use href="${(0, _iconsSvgDefault.default)}#icon-alert-triangle"></use>
+          </svg>
+        </div>
+        <p>${message}</p>
+      </div>
+    `;
+        this.clear();
+        this.#parentEl.insertAdjacentHTML("afterbegin", markup);
+    }
+    renderMessage(message = this.#successMessage) {
+        const markup = `
+      <div class="message">
+        <div>
+          <svg>
+            <use href="${(0, _iconsSvgDefault.default)}#icon-smile"></use>
+          </svg>
+        </div>
+        <p>${message}</p>
+      </div>
+    `;
+        this.clear();
         this.#parentEl.insertAdjacentHTML("afterbegin", markup);
     }
     #generateMarkup() {
@@ -2931,6 +2969,6 @@ try {
     else Function("r", "regeneratorRuntime = r")(runtime);
 }
 
-},{}]},["MWpgg","aenu9"], "aenu9", "parcelRequire3a11")
+},{}]},["hycaY","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map
