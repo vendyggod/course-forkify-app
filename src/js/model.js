@@ -1,15 +1,18 @@
 import { API_URL } from './config';
-import { getJSON, timeout } from './helpers';
-import recipeView from './views/recipeView';
+import { getJSON } from './helpers';
 
 export const state = {
   recipe: {},
+  search: {
+    query: '',
+    results: [],
+  },
 };
 
 export const loadRecipe = async function (id) {
   try {
     // Fetching recipe from API
-    const data = await getJSON(`${API_URL}/${id}`);
+    const data = await getJSON(`${API_URL}${id}`);
 
     // Changing to camelCase format and write to state obj
     state.recipe = Object.keys(data.data.recipe).reduce((acc, key) => {
@@ -19,8 +22,30 @@ export const loadRecipe = async function (id) {
       acc[formattedKey] = data.data.recipe[key];
       return acc;
     }, {});
+  } catch (err) {
+    throw err;
+  }
+};
 
-    console.log(state.recipe);
+export const loadSearchResults = async function (query) {
+  try {
+    state.search.query = query;
+
+    const data = await getJSON(`${API_URL}?search=${query}`);
+
+    data.data.recipes.forEach(el => {
+      // Formatting object keys
+      const formattedObj = Object.keys(el).reduce((acc, key) => {
+        const formattedKey = key.replace(/_([a-z])/g, (_, letter) =>
+          letter.toUpperCase()
+        );
+        acc[formattedKey] = el[key];
+        return acc;
+      }, {});
+
+      // Adding formatted objects to global state object
+      state.search.results.push(formattedObj);
+    });
   } catch (err) {
     throw err;
   }
