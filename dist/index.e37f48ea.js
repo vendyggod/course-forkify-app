@@ -610,12 +610,12 @@ const controlRecipes = async function() {
 };
 const controlSearchResults = async function() {
     try {
-        // Clear the previous state
+        // Clear previous results
         _model.state.search.results = [];
+        (0, _resultsViewDefault.default).renderLoadIcon();
         // 1) Get search query
         const query = (0, _searchViewDefault.default).getQuery();
         if (!query) return;
-        (0, _resultsViewDefault.default).renderLoadIcon();
         // 2) Load search results
         await _model.loadSearchResults(query);
         // 3) Render results
@@ -625,6 +625,8 @@ const controlSearchResults = async function() {
     }
 };
 const init = function() {
+    // Delete previous rendered recipe
+    window.location.hash = "";
     (0, _recipeViewDefault.default).addHandlerRender(controlRecipes);
     (0, _searchViewDefault.default).addHandlerSearch(controlSearchResults);
 };
@@ -1927,7 +1929,7 @@ const loadSearchResults = async function(query) {
         state.search.query = query;
         const data = await (0, _helpers.getJSON)(`${(0, _config.API_URL)}?search=${query}`);
         data.data.recipes.forEach((el)=>{
-            // Formatting object keys
+            // Formatting object keys from "test_test" to "testTest"
             const formattedObj = Object.keys(el).reduce((acc, key)=>{
                 const formattedKey = key.replace(/_([a-z])/g, (_, letter)=>letter.toUpperCase());
                 acc[formattedKey] = el[key];
