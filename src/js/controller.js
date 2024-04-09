@@ -28,14 +28,14 @@ const controlRecipes = async function () {
 
 const controlSearchResults = async function () {
   try {
-    // Clear the previous state
+    // Clear previous results
     model.state.search.results = [];
+
+    resultsView.renderLoadIcon();
 
     // 1) Get search query
     const query = searchView.getQuery();
     if (!query) return;
-
-    resultsView.renderLoadIcon();
 
     // 2) Load search results
     await model.loadSearchResults(query);
@@ -48,6 +48,9 @@ const controlSearchResults = async function () {
 };
 
 const init = function () {
+  // Delete previous rendered recipe
+  window.location.hash = '';
+
   recipeView.addHandlerRender(controlRecipes);
   searchView.addHandlerSearch(controlSearchResults);
 };

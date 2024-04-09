@@ -34,7 +34,7 @@ export const loadSearchResults = async function (query) {
     const data = await getJSON(`${API_URL}?search=${query}`);
 
     data.data.recipes.forEach(el => {
-      // Formatting object keys
+      // Formatting object keys from "test_test" to "testTest"
       const formattedObj = Object.keys(el).reduce((acc, key) => {
         const formattedKey = key.replace(/_([a-z])/g, (_, letter) =>
           letter.toUpperCase()
