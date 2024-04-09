@@ -47,6 +47,8 @@ const controlSearchResults = async function () {
   }
 };
 
+// test
+
 const init = function () {
   // Delete previous rendered recipe
   window.location.hash = '';
