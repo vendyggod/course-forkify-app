@@ -17,11 +17,16 @@ const controlRecipes = async function () {
 
     recipeView.renderLoadIcon();
 
+    // Update selected recipe to be active from search results
+    resultsView.update(model.getSearchResultsPage());
+
     // Fetching data from recipes API
     await model.loadRecipe(id);
 
     // Rendering recipe
     recipeView.render(model.state.recipe);
+
+    console.log(model.state.recipe);
   } catch (err) {
     recipeView.renderError();
   }
@@ -29,7 +34,7 @@ const controlRecipes = async function () {
 
 const controlSearchResults = async function () {
   try {
-    // Clear previous results
+    // Clear previous results and render load icon
     model.state.search.results = [];
     resultsView.renderLoadIcon();
 
@@ -41,7 +46,6 @@ const controlSearchResults = async function () {
     await model.loadSearchResults(query);
 
     // 3) Render results
-    console.log(model.state.search.results);
     resultsView.render(model.getSearchResultsPage());
 
     // 4) Render initial pagination buttons
@@ -59,11 +63,21 @@ const controlPagination = function (goToPage) {
   paginationView.render(model.state.search);
 };
 
+const controlServings = function (newServings) {
+  // Update the recipe servings in state
+  model.updateServings(newServings);
+
+  // Update the recipe view
+  // recipeView.render(model.state.recipe); we don't want to rerender all the html of recipe view, only the part
+  recipeView.update(model.state.recipe);
+};
+
 const init = function () {
   // Delete previous rendered recipe
   window.location.hash = '';
 
   recipeView.addHandlerRender(controlRecipes);
+  recipeView.addHandlerUpdateServings(controlServings);
   searchView.addHandlerSearch(controlSearchResults);
   paginationView.addHandlerClick(controlPagination);
 };

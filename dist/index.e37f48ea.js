@@ -593,6 +593,8 @@ var _searchView = require("./views/searchView");
 var _searchViewDefault = parcelHelpers.interopDefault(_searchView);
 var _resultsView = require("./views/resultsView");
 var _resultsViewDefault = parcelHelpers.interopDefault(_resultsView);
+var _paginationView = require("./views/paginationView");
+var _paginationViewDefault = parcelHelpers.interopDefault(_paginationView);
 var _runtime = require("regenerator-runtime/runtime");
 if (module.hot) module.hot.accept;
 const controlRecipes = async function() {
@@ -600,17 +602,20 @@ const controlRecipes = async function() {
         const id = window.location.hash.slice(1);
         if (!id) return;
         (0, _recipeViewDefault.default).renderLoadIcon();
+        // Update selected recipe to be active from search results
+        (0, _resultsViewDefault.default).update(_model.getSearchResultsPage());
         // Fetching data from recipes API
         await _model.loadRecipe(id);
         // Rendering recipe
         (0, _recipeViewDefault.default).render(_model.state.recipe);
+        console.log(_model.state.recipe);
     } catch (err) {
         (0, _recipeViewDefault.default).renderError();
     }
 };
 const controlSearchResults = async function() {
     try {
-        // Clear previous results
+        // Clear previous results and render load icon
         _model.state.search.results = [];
         (0, _resultsViewDefault.default).renderLoadIcon();
         // 1) Get search query
@@ -619,21 +624,37 @@ const controlSearchResults = async function() {
         // 2) Load search results
         await _model.loadSearchResults(query);
         // 3) Render results
-        console.log(_model.state.search.results);
         (0, _resultsViewDefault.default).render(_model.getSearchResultsPage());
+        // 4) Render initial pagination buttons
+        (0, _paginationViewDefault.default).render(_model.state.search);
     } catch (err) {
         console.error(err);
     }
+};
+const controlPagination = function(goToPage) {
+    // 1) Render NEW results
+    (0, _resultsViewDefault.default).render(_model.getSearchResultsPage(goToPage));
+    // 2) Render NEW pagination buttons
+    (0, _paginationViewDefault.default).render(_model.state.search);
+};
+const controlServings = function(newServings) {
+    // Update the recipe servings in state
+    _model.updateServings(newServings);
+    // Update the recipe view
+    // recipeView.render(model.state.recipe); we don't want to rerender all the html of recipe view, only the part
+    (0, _recipeViewDefault.default).update(_model.state.recipe);
 };
 const init = function() {
     // Delete previous rendered recipe
     window.location.hash = "";
     (0, _recipeViewDefault.default).addHandlerRender(controlRecipes);
+    (0, _recipeViewDefault.default).addHandlerUpdateServings(controlServings);
     (0, _searchViewDefault.default).addHandlerSearch(controlSearchResults);
+    (0, _paginationViewDefault.default).addHandlerClick(controlPagination);
 };
 init();
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","core-js/modules/web.immediate.js":"49tUX","./model":"Y4A21","./views/recipeView":"l60JC","regenerator-runtime/runtime":"dXNgZ","./views/searchView":"9OQAM","./views/resultsView":"cSbZE"}],"gkKU3":[function(require,module,exports) {
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","core-js/modules/web.immediate.js":"49tUX","./model":"Y4A21","./views/recipeView":"l60JC","regenerator-runtime/runtime":"dXNgZ","./views/searchView":"9OQAM","./views/resultsView":"cSbZE","./views/paginationView":"6z7bi"}],"gkKU3":[function(require,module,exports) {
 exports.interopDefault = function(a) {
     return a && a.__esModule ? a : {
         default: a
@@ -1903,6 +1924,7 @@ parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "getSearchResultsPage", ()=>getSearchResultsPage);
+parcelHelpers.export(exports, "updateServings", ()=>updateServings);
 var _config = require("./config");
 var _helpers = require("./helpers");
 const state = {
@@ -1942,6 +1964,8 @@ const loadSearchResults = async function(query) {
             // Adding formatted objects to global state object
             state.search.results.push(formattedObj);
         });
+        // Reset current page whenever NEW search is made
+        state.search.page = 1;
     } catch (err) {
         throw err;
     }
@@ -1951,6 +1975,12 @@ const getSearchResultsPage = function(page = state.search.page) {
     const start = (page - 1) * state.search.resultsPerPage;
     const end = page * state.search.resultsPerPage;
     return state.search.results.slice(start, end);
+};
+const updateServings = function(newServings) {
+    state.recipe.ingredients.forEach((ing)=>{
+        ing.quantity = ing.quantity * newServings / state.recipe.servings;
+    });
+    state.recipe.servings = newServings;
 };
 
 },{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config":"k5Hzs","./helpers":"hGI1E"}],"k5Hzs":[function(require,module,exports) {
@@ -2006,6 +2036,14 @@ class RecipeView extends (0, _viewDefault.default) {
             "load"
         ].forEach((ev)=>window.addEventListener(ev, handler));
     }
+    addHandlerUpdateServings(handler) {
+        this._parentEl.addEventListener("click", function(e) {
+            const btn = e.target.closest(".btn--update-servings");
+            if (!btn) return;
+            const { updateTo } = btn.dataset;
+            if (+updateTo > 0) handler(+updateTo);
+        });
+    }
     _generateMarkup() {
         return `
     <figure class="recipe__fig">
@@ -2032,12 +2070,12 @@ class RecipeView extends (0, _viewDefault.default) {
         <span class="recipe__info-text">servings</span>
   
         <div class="recipe__info-buttons">
-          <button class="btn--tiny btn--increase-servings">
+          <button class="btn--tiny btn--update-servings" data-update-to="${this._data.servings - 1}">
             <svg>
               <use href="${0, _iconsSvgDefault.default}#icon-minus-circle"></use>
             </svg>
           </button>
-          <button class="btn--tiny btn--increase-servings">
+          <button class="btn--tiny btn--update-servings" data-update-to="${this._data.servings + 1}">
             <svg>
               <use href="${0, _iconsSvgDefault.default}#icon-plus-circle"></use>
             </svg>
@@ -2403,6 +2441,20 @@ class View {
         const markup = this._generateMarkup();
         this.clear();
         this._parentEl.insertAdjacentHTML("afterbegin", markup);
+    }
+    update(data) {
+        this._data = data;
+        const newMarkup = this._generateMarkup();
+        const newDom = document.createRange().createContextualFragment(newMarkup);
+        const newElements = Array.from(newDom.querySelectorAll("*"));
+        const curElements = Array.from(this._parentEl.querySelectorAll("*"));
+        newElements.forEach((newEl, i)=>{
+            const curEl = curElements[i];
+            // Updates changed TEXT
+            if (!newEl.isEqualNode(curEl) && newEl.firstChild?.nodeValue.trim() !== "") curEl.textContent = newEl.textContent;
+            // Updates changed ATTRIBUTES
+            if (!newEl.isEqualNode(curEl)) Array.from(newEl.attributes).forEach((attr)=>curEl.setAttribute(attr.name, attr.value));
+        });
     }
     clear() {
         this._parentEl.innerHTML = "";
@@ -3073,9 +3125,10 @@ class ResultsView extends (0, _viewDefault.default) {
         return this._data.map(this._generatePreview).join("");
     }
     _generatePreview(result) {
+        const id = window.location.hash.slice(1);
         return `
       <li class="preview">
-        <a class="preview__link" href="#${result.id}">
+        <a class="preview__link ${result.id === id ? "preview__link--active" : ""}" href="#${result.id}">
           <figure class="preview__fig">
             <img src="${result.imageUrl}" alt="${result.title}" />
           </figure>
@@ -3090,6 +3143,59 @@ class ResultsView extends (0, _viewDefault.default) {
 }
 exports.default = new ResultsView();
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./View":"5cUXS","url:../../img/icons.svg":"loVOp"}]},["hycaY","aenu9"], "aenu9", "parcelRequire3a11")
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./View":"5cUXS","url:../../img/icons.svg":"loVOp"}],"6z7bi":[function(require,module,exports) {
+var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
+parcelHelpers.defineInteropFlag(exports);
+var _view = require("./View");
+var _viewDefault = parcelHelpers.interopDefault(_view);
+var _iconsSvg = require("url:../../img/icons.svg");
+var _iconsSvgDefault = parcelHelpers.interopDefault(_iconsSvg);
+class PaginationView extends (0, _viewDefault.default) {
+    _parentEl = document.querySelector(".pagination");
+    addHandlerClick(handler) {
+        this._parentEl.addEventListener("click", function(e) {
+            const btn = e.target.closest(".btn--inline");
+            if (!btn) return;
+            const goToPage = +btn.dataset.goto;
+            handler(goToPage);
+        });
+    }
+    _generateMarkupButton(currentPage) {
+        return {
+            next: `
+        <button class="btn--inline pagination__btn--next" data-goto="${currentPage + 1}">
+          <span>Page ${currentPage + 1}</span>
+          <svg class="search__icon">
+            <use href="${0, _iconsSvgDefault.default}#icon-arrow-right"></use>
+          </svg>
+        </button>
+        `,
+            previous: `
+        <button class="btn--inline pagination__btn--prev" data-goto="${currentPage - 1}">
+          <svg class="search__icon">
+            <use href="${0, _iconsSvgDefault.default}#icon-arrow-left"></use>
+          </svg>
+          <span>Page ${currentPage - 1}</span>
+        </button>
+        `
+        };
+    }
+    _generateMarkup() {
+        const currentPage = this._data.page;
+        const numPages = Math.ceil(this._data.results.length / this._data.resultsPerPage);
+        const btn = this._generateMarkupButton(currentPage);
+        // Мы на странице 1 и есть другие страницы
+        if (currentPage === 1 && numPages > 1) return btn.next;
+        // Мы на последней странице
+        if (currentPage === numPages && numPages > 1) return btn.previous;
+        // Мы на других страницах
+        if (currentPage < numPages) return btn.next + btn.previous;
+        // Мы на странице 1 и нет других страниц
+        return ``;
+    }
+}
+exports.default = new PaginationView();
+
+},{"./View":"5cUXS","url:../../img/icons.svg":"loVOp","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["hycaY","aenu9"], "aenu9", "parcelRequire3a11")
 
 //# sourceMappingURL=index.e37f48ea.js.map
